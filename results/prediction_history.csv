@@ -1,0 +1,14 @@
+Date & Time,Image Name,Predicted Condition,Confidence,Status
+03-09-2026 12:23:40,LV00001.jpg,Curl Virus,50.25%,Low Confidence / Uncertain
+03-09-2026 12:26:39,HGD00002.jpg,Herbicide Growth Damage,37.36%,Low Confidence / Uncertain
+06-10-2026 22:00:48,HGD00001.jpg,Herbicide Growth Damage,82.58%,Reliable Prediction
+07-10-2026 21:33:07,HGD00007.jpg,Herbicide Growth Damage,64.28%,Moderate Confidence
+07-10-2026 21:56:04,LV00007.jpg,Leaf Redding,46.48%,Low Confidence
+07-10-2026 22:05:24,LV00002.jpg,Healthy Leaf,40.66%,Low Confidence
+07-10-2026 22:16:53,LV00004.jpg,Leaf Variegation,81.99%,High Confidence
+08-10-2026 05:33:01,LV00067.jpg,Leaf Variegation,32.74%,Low Confidence
+08-10-2026 05:33:02,LV00067.jpg,Leaf Variegation,32.74%,Low Confidence
+08-10-2026 11:53:07,LV00006.jpg,Leaf Variegation,49.73%,Low Confidence
+08-10-2026 11:55:50,LV00033.jpg,Leaf Variegation,38.35%,Low Confidence
+08-10-2026 14:30:40,BBC00004.jpg,Bacterial Blight,51.33%,Low Confidence
+08-10-2026 14:56:47,BBC00005.jpg,Leaf Variegation,28.56%,Low Confidence
