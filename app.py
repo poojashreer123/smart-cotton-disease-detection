@@ -3,9 +3,6 @@ import pandas as pd
 from PIL import Image
 import streamlit as st
 import tensorflow as tf
-from tensorflow.keras.applications import EfficientNetB0
-from tensorflow.keras.layers import Dense, Dropout, GlobalAveragePooling2D
-from tensorflow.keras.models import Model
 import time
 
 # --- Page Config ---
@@ -52,23 +49,24 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- Load EfficientNetB0 Model ---
-
-
+# --- Load Your Actual Trained Model ---
 @st.cache_resource
-def load_efficientnet():
-  base_model = EfficientNetB0(
-      weights="imagenet", include_top=False, input_shape=(224, 224, 3)
-  )
-  x = base_model.output
-  x = GlobalAveragePooling2D()(x)
-  x = Dense(256, activation="relu")(x)
-  x = Dropout(0.3)(x)
-  outputs = Dense(7, activation="softmax")(x)
-  return Model(inputs=base_model.input, outputs=outputs)
+def load_trained_model():
+  # Replace with the exact filename of your saved trained model (.keras or .h5)
+  # Make sure this file exists in your 'model/' folder on GitHub
+  model_path = "model/efficientnetb0_model.keras"  # or 'model/efficientnetb0_model.h5'
+  try:
+    loaded_model = tf.keras.models.load_model(model_path)
+    return loaded_model
+  except Exception as e:
+    st.error(
+        f"Error loading model from {model_path}. Make sure your saved model"
+        f" file is uploaded to GitHub. Details: {e}"
+    )
+    return None
 
 
-model = load_efficientnet()
+model = load_trained_model()
 
 CLASS_LABELS = [
     "Leaf Variegation",
@@ -81,7 +79,8 @@ CLASS_LABELS = [
 ]
 
 # --- Confidence Threshold for Non-Cotton / Unrecognized Image Detection ---
-CONFIDENCE_THRESHOLD = 60.0  # 60% confidence cutoff
+# If the model confidence is below 60%, it flags it as not a valid cotton leaf
+CONFIDENCE_THRESHOLD = 60.0
 
 # --- Complete 7-Class Advisory & Treatment Database ---
 ADVISORY_DATABASE = {
@@ -316,7 +315,7 @@ if active_module == "Live Leaf Scanner":
       )
 
   with col_results:
-    if uploaded_image:
+    if uploaded_image and model is not None:
       # Model Inference Pipeline
       img = uploaded_image.resize((224, 224))
       arr = tf.keras.preprocessing.image.img_to_array(img)
@@ -331,7 +330,7 @@ if active_module == "Live Leaf Scanner":
       top_label = CLASS_LABELS[top_idx]
       top_conf = float(preds[0][top_idx]) * 100
 
-      # Check Confidence Threshold for Non-Cotton / Invalid Image
+      # --- Confidence Threshold Check for Non-Cotton / Invalid Images ---
       if top_conf < CONFIDENCE_THRESHOLD:
         st.session_state.prediction_history.append({
             "label": "Unrecognized / Non-Cotton",
