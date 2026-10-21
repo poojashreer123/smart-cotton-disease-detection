@@ -81,7 +81,8 @@ CLASS_LABELS = [
 ]
 
 # --- Confidence Threshold for Non-Cotton / Unrecognized Image Detection ---
-CONFIDENCE_THRESHOLD = 60.0  # 60%
+# Raised to 88.0% so random faces/objects scoring ~83% are successfully caught
+CONFIDENCE_THRESHOLD = 88.0
 
 # --- Complete 7-Class Advisory & Treatment Database ---
 ADVISORY_DATABASE = {
@@ -350,17 +351,10 @@ if active_module == "Live Leaf Scanner":
 
         st.markdown(
             f"""
-            <div class="dark-card" style="border-color: #522b1c;">
+            <div style="background-color: #2b140b; border: 1px solid #733519; border-radius: 12px; padding: 20px; margin-bottom: 15px;">
                 <span style="color: #e0bc36; font-size: 12px;">ANALYSIS RESULT &nbsp;|&nbsp; Latency: {latency}ms</span>
                 <h2 style="color: #e0bc36 !important; margin: 4px 0;">⚠️ Unrecognized Image</h2>
-                <span style="color: #d9a3bc; font-size: 13px;">Low Confidence / Out-of-Distribution</span>
-                
-                <hr style="border-color: #422216; margin: 15px 0;">
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                    <span style="font-size: 14px; font-weight: bold;">Top Confidence:</span>
-                    <span style="color: #e0bc36; font-weight: bold; font-size: 16px;">{top_conf:.1f}%</span>
-                </div>
+                <span style="color: #d9a3bc; font-size: 13px;">Low Confidence / Out-of-Distribution Specimen</span>
             </div>
             """,
             unsafe_allow_html=True,
@@ -369,8 +363,8 @@ if active_module == "Live Leaf Scanner":
             "⚠️ **Warning: Unrecognized Image / Not a Cotton Leaf!**\n\nThis"
             " image does not appear to be a valid cotton plant leaf, or it is"
             f" too blurry/unclear (Confidence {top_conf:.1f}% is below the"
-            f" {int(CONFIDENCE_THRESHOLD)}% threshold). Please upload a clear"
-            " photo of a cotton leaf."
+            f" required {int(CONFIDENCE_THRESHOLD)}% threshold). Please upload"
+            " a clear photo of a cotton leaf."
         )
       else:
         st.session_state.prediction_history.append({
@@ -382,22 +376,16 @@ if active_module == "Live Leaf Scanner":
 
         st.markdown(
             f"""
-            <div class="dark-card">
+            <div style="background-color: #0a1f14; border: 1px solid #143b24; border-radius: 12px; padding: 20px; margin-bottom: 15px;">
                 <span style="color: #7ab899; font-size: 12px;">PREDICTION RESULT &nbsp;|&nbsp; Latency: {latency}ms</span>
                 <h2 style="color: #27d983 !important; margin: 4px 0;">{top_label}</h2>
                 <span style="color: #a3d9bc; font-size: 13px;">Diagnostic Classification Verified</span>
-                
-                <hr style="border-color: #164228; margin: 15px 0;">
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                    <span style="font-size: 14px; font-weight: bold;">Primary Model Confidence:</span>
-                    <span style="color: #27d983; font-weight: bold; font-size: 16px;">{top_conf:.1f}%</span>
-                </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
+        st.metric("Primary Model Confidence", f"{top_conf:.1f}%")
         st.progress(int(top_conf))
 
         st.markdown("#### **TOP CLASS PROBABILITY DISTRIBUTION:**")
@@ -465,8 +453,8 @@ elif active_module == "Prediction History & Analytics":
     most_detected = (
         df_history["label"].mode()[0] if not df_history.empty else "N/A"
     )
-    reliable_preds = len(df_history[df_history["confidence"] >= 70.0])
-    low_confidence_count = len(df_history[df_history["confidence"] < 70.0])
+    reliable_preds = len(df_history[df_history["confidence"] >= 88.0])
+    low_confidence_count = len(df_history[df_history["confidence"] < 88.0])
 
     st.markdown("#### 📌 **Overall Statistics**")
     sc1, sc2, sc3, sc4 = st.columns(4)
