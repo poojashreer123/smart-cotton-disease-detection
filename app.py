@@ -317,17 +317,17 @@ if active_module == "Live Leaf Scanner":
 
   with col_results:
     if uploaded_image and interpreter is not None:
-      # TFLite Preprocessing and Inference Pipeline
+      # TFLite Preprocessing Pipeline with Correct EfficientNet Scaling
       img = uploaded_image.resize((224, 224))
-      arr = np.array(img, dtype=np.float32)
+      arr = tf.keras.preprocessing.image.img_to_array(img)
 
       if len(arr.shape) == 2:
         arr = np.stack((arr,) * 3, axis=-1)
       elif arr.shape[2] == 4:
         arr = arr[:, :, :3]
 
-      arr = arr / 255.0
       arr = np.expand_dims(arr, axis=0)
+      arr = tf.keras.applications.efficientnet.preprocess_input(arr)
 
       start = time.time()
       interpreter.set_tensor(input_details[0]["index"], arr)
