@@ -49,24 +49,26 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- Load Your Actual Trained Model ---
+# --- Load TFLite Model ---
 @st.cache_resource
-def load_trained_model():
-  # Replace with the exact filename of your saved trained model (.keras or .h5)
-  # Make sure this file exists in your 'model/' folder on GitHub
-  model_path = "model/efficientnetb0_model.keras"  # or 'model/efficientnetb0_model.h5'
+def load_tflite_model():
+  model_path = "model/efficientnetb0_model.tflite"
   try:
-    loaded_model = tf.keras.models.load_model(model_path)
-    return loaded_model
+    interpreter = tf.lite.Interpreter(model_path=model_path)
+    interpreter.allocate_tensors()
+    return interpreter
   except Exception as e:
     st.error(
-        f"Error loading model from {model_path}. Make sure your saved model"
-        f" file is uploaded to GitHub. Details: {e}"
+        f"Error loading TFLite model from {model_path}. Make sure your"
+        f" .tflite file is in the 'model/' folder on GitHub. Details: {e}"
     )
     return None
 
 
-model = load_trained_model()
+interpreter = load_tflite_model()
+if interpreter is not None:
+  input_details = interpreter.get_input_details()
+  output_details = interpreter.get_output_details()
 
 CLASS_LABELS = [
     "Leaf Variegation",
@@ -79,8 +81,7 @@ CLASS_LABELS = [
 ]
 
 # --- Confidence Threshold for Non-Cotton / Unrecognized Image Detection ---
-# If the model confidence is below 60%, it flags it as not a valid cotton leaf
-CONFIDENCE_THRESHOLD = 60.0
+CONFIDENCE_THRESHOLD = 60.0  # 60%
 
 # --- Complete 7-Class Advisory & Treatment Database ---
 ADVISORY_DATABASE = {
@@ -229,7 +230,7 @@ with st.sidebar:
   st.markdown("#### **Model Pipeline**")
   st.markdown(
       """
-    - **Backbone:** `EfficientNetB0`
+    - **Backbone:** `EfficientNetB0 (TFLite)`
     - **Dataset:** SAR-CLD-2024
     - **Input Size:** $224 \\times 224 \\times 3$
     - **Parameters:** ~4.04 Million
@@ -247,7 +248,7 @@ st.markdown(
         <span style="color: #6c9e83; margin-left: 10px; font-size: 13px;">SAR-CLD-2024</span>
     </div>
     <div style="color: #a3d9bc; font-size: 13px;">
-        ☀️ Cotton Belt: <b>31°C | RH: 72%</b> &nbsp;|&nbsp; ⚡ Backbone: <b>EfficientNetB0 (32ms)</b>
+        ☀️ Cotton Belt: <b>31°C | RH: 72%</b> &nbsp;|&nbsp; ⚡ Backbone: <b>EfficientNetB0 TFLite (32ms)</b>
     </div>
 </div>
 """,
@@ -259,7 +260,7 @@ if active_module == "Live Leaf Scanner":
   st.markdown(
       """
     <div class="dark-card">
-        <span style="color: #27d983; font-size: 13px; font-weight: bold;">⚡ Fine-Tuned EfficientNetB0 (SAR-CLD-2024 Benchmark: 97.4% Accuracy)</span>
+        <span style="color: #27d983; font-size: 13px; font-weight: bold;">⚡ Fine-Tuned EfficientNetB0 TFLite (SAR-CLD-2024 Benchmark: 97.4% Accuracy)</span>
         <h2 style="color: #ffffff !important; margin-top: 5px; margin-bottom: 10px;">Real-Time Cotton Leaf Disease Scanner & Diagnostics</h2>
         <p style="color: #9cbda8; font-size: 14px;">Target foliage with live webcam streaming, upload field photographs, or test curated SAR-CLD-2024 pathology specimens. Get instant classification and CIBRC-approved remediation.</p>
     </div>
@@ -315,20 +316,28 @@ if active_module == "Live Leaf Scanner":
       )
 
   with col_results:
-    if uploaded_image and model is not None:
-      # Model Inference Pipeline
+    if uploaded_image and interpreter is not None:
+      # TFLite Preprocessing and Inference Pipeline
       img = uploaded_image.resize((224, 224))
-      arr = tf.keras.preprocessing.image.img_to_array(img)
+      arr = np.array(img, dtype=np.float32)
+
+      if len(arr.shape) == 2:
+        arr = np.stack((arr,) * 3, axis=-1)
+      elif arr.shape[2] == 4:
+        arr = arr[:, :, :3]
+
+      arr = arr / 255.0
       arr = np.expand_dims(arr, axis=0)
-      arr = tf.keras.applications.efficientnet.preprocess_input(arr)
 
       start = time.time()
-      preds = model.predict(arr)
+      interpreter.set_tensor(input_details[0]["index"], arr)
+      interpreter.invoke()
+      preds = interpreter.get_tensor(output_details[0]["index"])[0]
       latency = round((time.time() - start) * 1000, 1)
 
-      top_idx = np.argmax(preds[0])
+      top_idx = np.argmax(preds)
       top_label = CLASS_LABELS[top_idx]
-      top_conf = float(preds[0][top_idx]) * 100
+      top_conf = float(preds[top_idx]) * 100
 
       # --- Confidence Threshold Check for Non-Cotton / Invalid Images ---
       if top_conf < CONFIDENCE_THRESHOLD:
@@ -392,10 +401,10 @@ if active_module == "Live Leaf Scanner":
         st.progress(int(top_conf))
 
         st.markdown("#### **TOP CLASS PROBABILITY DISTRIBUTION:**")
-        sorted_idx = np.argsort(preds[0])[::-1][:3]
+        sorted_idx = np.argsort(preds)[::-1][:3]
         for rank, idx in enumerate(sorted_idx, 1):
           lbl = CLASS_LABELS[idx]
-          score = float(preds[0][idx]) * 100
+          score = float(preds[idx]) * 100
           st.write(f"**{rank}. {lbl}** — `{score:.1f}%`")
           st.progress(int(score))
 
@@ -569,8 +578,8 @@ elif active_module == "Dataset & Evaluation":
 elif active_module == "Model Pipeline":
   st.markdown("### ⚙️ EfficientNetB0 Architecture Details")
   st.write("""
-    - **Backbone:** EfficientNetB0 (Compound Scaling)
+    - **Backbone:** EfficientNetB0 TFLite (Compound Scaling)
     - **Input Dimensions:** 224 x 224 x 3
     - **Parameter Size:** ~4.04 Million parameters
-    - **Optimizer & Loss:** Adam Optimizer with Categorical Crossentropy
+    - **Quantization:** FP32 / TFLite Optimized Edge Inference
     """)
